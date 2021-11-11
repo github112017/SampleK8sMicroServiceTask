@@ -1,0 +1,44 @@
+plugins {
+	id 'org.springframework.boot' version '2.4.3'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+}
+
+group = 'com.assignments'
+version = '1.0.0-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+}
+
+test {
+	useJUnitPlatform()
+}
+
+task clearDockerJar(type: Delete) {
+	project.delete(files("${buildDir}/docker"))
+}
+
+task copyDockerJar(type: Copy) {
+	from "$buildDir/libs"
+	include "**/*.jar"
+	into "$buildDir/docker"
+	rename { String fileName -> fileName.replace("-$project.version", "") }
+}
+
+task docker(type: Exec) {
+	commandLine "docker", "build", ".", "-t", "jamieshowbie/$project.name:latest"
+}
+
+clearDockerJar.dependsOn build
+copyDockerJar.dependsOn clearDockerJar
+docker.dependsOn copyDockerJar

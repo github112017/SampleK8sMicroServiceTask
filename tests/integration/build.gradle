@@ -1,0 +1,42 @@
+plugins {
+	id 'org.springframework.boot' version '2.4.3'
+	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
+	id 'java'
+	id 'com.adarshr.test-logger' version '2.1.1'
+}
+
+group = 'com.assignments'
+version = '0.0.1-SNAPSHOT'
+sourceCompatibility = '1.8'
+
+repositories {
+	mavenCentral()
+	mavenLocal()
+}
+
+dependencies {
+	implementation 'org.springframework.boot:spring-boot-starter-web'
+	implementation 'org.springframework.boot:spring-boot-starter-security'
+
+	implementation 'io.jsonwebtoken:jjwt:0.9.1'
+
+	testImplementation 'org.springframework.boot:spring-boot-starter-test'
+	testImplementation 'org.springframework.security:spring-security-test'
+}
+
+testlogger {
+	theme 'mocha'
+}
+
+test {
+	exclude 'com/showbie/integration/**/*Integration*'
+	useJUnitPlatform()
+}
+
+task integration(type: Test) {
+	if (project.properties['host']) {
+		environment "request_host", "${project.properties['host']}"
+	}
+	include 'com/showbie/integration/**/*Integration*'
+	useJUnitPlatform()
+}

@@ -1,0 +1,23 @@
+#
+# Ingress resource for exposing the public service. 
+#
+# We leverage the path rewrite ability in Ngix to provide an abstraction from the 
+# cloud services. We can expose any endpoints we want while maintaining the 
+# flexibility to make changes on the cloud side. Also useful for support of multiple 
+# versions of a service running concurrently 
+#
+apiVersion: networking.k8s.io/v1beta1
+kind: Ingress
+metadata:
+  namespace: showbie
+  name: showbie-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /$1
+spec:
+  rules:
+  - http:
+      paths:
+      - path: /publicservice/v1/(.*)
+        backend:
+          serviceName: publicservice-v1
+          servicePort: 8081

@@ -1,0 +1,65 @@
+
+# The namespace resource used to group all the project resources together. 
+# Makes it easier to remove the resources when cleaning up the cluster.
+#
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: showbie
+  labels:
+     name: showbie
+---
+
+# The deployment resource for the public service. The deployment is already 
+# configured to use an image from docker hub. If you built the service code
+# locally and want to use the image published elsewhere, remember to update 
+# the image configuration below.
+#
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: showbie
+  name: publicservice-v1-deployment
+  labels:
+     app: publicservice-v1
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: publicservice-v1
+  template:
+    metadata:
+      labels:
+        app: publicservice-v1
+    spec:
+      containers:
+        - name: publicservice-v1
+          env:
+          - name: spring_profiles_active
+            value: prod
+          image: jamieshowbie/public-service:latest
+          ports:
+          - containerPort: 8081
+            protocol: TCP
+---
+
+# The service resource used to expose the public service deployment resource 
+# to the cluster. Uses a NodePort type allow limited exposure outside the 
+# cluster node.
+#  
+apiVersion: v1
+kind: Service
+metadata:
+  namespace: showbie
+  labels:
+    app: publicservice-v1
+  name: publicservice-v1
+spec:
+  ports:
+  - port: 8081
+    protocol: TCP
+    targetPort: 8081
+  selector:
+    app: publicservice-v1
+  sessionAffinity: None
+  type: NodePort
