@@ -9,13 +9,15 @@ import org.springframework.stereotype.Component;
 
 import java.io.IOException;
 
-import static com.showbie.sharedcode.http.correlation.CorrelationRequestFilter.CORRELATION_ID_HEADER;
-import static com.showbie.sharedcode.http.correlation.CorrelationRequestFilter.CORRELATION_MDC_KEY;
+import static com.showbie.publicservice.http.security.TokenValidationFilter.CORRELATION_ID_HEADER;
+import static com.showbie.publicservice.http.security.TokenValidationFilter.CORRELATION_MDC_KEY;
+
 
 /**
  * Intercepts outgoing requests to populate the X-CorrelationId header with
  * that from the original incoming request. This allows us to observe via
  * logging incoming requests as they travel through our services.
+ * See also {@link com.showbie.publicservice.http.security.TokenValidationFilter}
  */
 @Component
 public class RestTemplateCorrelationInterceptor implements ClientHttpRequestInterceptor {
