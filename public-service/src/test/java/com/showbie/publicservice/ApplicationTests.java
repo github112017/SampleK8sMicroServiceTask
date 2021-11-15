@@ -10,6 +10,7 @@ import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.Collections;
+import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
@@ -60,6 +61,7 @@ class ApplicationTests {
     private Message makeRequestInternal(String resource) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.set("X-CorrelationId", UUID.randomUUID().toString());
         HttpEntity<String> entity = new HttpEntity<>(headers);
         String url = String.format("http://%s/%s", host, resource);
         ResponseEntity<Message> response = restTemplate.exchange(url, HttpMethod.GET, entity,
