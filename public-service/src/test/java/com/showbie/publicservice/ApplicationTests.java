@@ -1,10 +1,11 @@
 package com.showbie.publicservice;
 
-import com.fasterxml.jackson.core.JsonParser;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.showbie.publicservice.models.Message;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -13,20 +14,15 @@ import org.springframework.http.*;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.text.DateFormat;
-import java.text.ParseException;
-import java.text.SimpleDateFormat;
-import java.time.Instant;
-import java.time.format.DateTimeParseException;
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
+import java.util.stream.Collectors;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, properties = {
+        "auth.token.key=ABC123"
+})
 class ApplicationTests {
 
     @Value("${request.host:localhost:8081}")
@@ -34,6 +30,9 @@ class ApplicationTests {
 
     @Value("${request.resource:message}")
     private String resource;
+
+    @Value("${auth.token.key}")
+    private String authTokenSigningKey;
 
     private RestTemplate restTemplate;
     private ObjectMapper objectMapper;
@@ -44,12 +43,25 @@ class ApplicationTests {
     }
 
     @Autowired
-    public void setObjectMapper(ObjectMapper objectMapper) { this.objectMapper = objectMapper; }
+    public void setObjectMapper(ObjectMapper objectMapper) {
+        this.objectMapper = objectMapper;
+    }
 
     @Test
-    void should_return_message_happy_path() {
+    void should_return_message_public_service_happy_path() {
 
-        Message message = makeRequest();
+        Message message = makeValidRequest();
+
+        assertThat(message).isNotNull();
+        assertThat(message.getText()).isNotNull();
+        System.out.println(message.getText());
+    }
+
+    @Test
+    void should_return_messages_public_and_internal_service_happy_path() {
+        fail("NOT IMPLEMENTED");
+
+        Message message = makeValidRequest();
 
         assertThat(message).isNotNull();
         assertThat(message.getText()).isNotNull();
@@ -62,7 +74,7 @@ class ApplicationTests {
         HttpClientErrorException exception = null;
 
         try {
-            makeRequestInternal("invalidResource");
+            makeValidRequest("invalidResource");
         } catch (HttpClientErrorException ex) {
             exception = ex;
         }
@@ -74,7 +86,7 @@ class ApplicationTests {
     void should_return_401_if_not_authenticated() throws JsonProcessingException {
         HttpClientErrorException exception = null;
         try {
-            makeRequest();
+            makeRequestInternal(resource, (String) null); // no tpken supplied, thus no Authorization header
             fail("should not be reached");
         } catch (HttpClientErrorException ex) {
             exception = ex;
@@ -83,14 +95,155 @@ class ApplicationTests {
         assertClientError(exception, 401, "Unauthorized", "Authentication is required");
     }
 
-    private Message makeRequest() {
-        return makeRequestInternal(resource);
+    @Test
+    void should_return_401_if_authentication_fails_wrong_key() throws JsonProcessingException {
+        HttpClientErrorException exception = null;
+        String token = createTokenInternal(
+                "not_the_token_key", // signed with an unexpected key
+                new Date(System.currentTimeMillis()),
+                new Date(System.currentTimeMillis() + (60 * 1000)),
+                "PUBLIC_SERVICE"
+        );
+        try {
+            makeRequestInternal(resource, token);
+            fail("should not be reached");
+        } catch (HttpClientErrorException ex) {
+            exception = ex;
+        }
+
+        assertClientError(exception, 401, "Unauthorized", "Authentication is required");
     }
 
-    private Message makeRequestInternal(String resource) {
+    @Test
+    void should_return_401_if_authentication_fails_wrong_scope() throws JsonProcessingException {
+        HttpClientErrorException exception = null;
+        String token = createToken(
+                new Date(System.currentTimeMillis()),
+                new Date(System.currentTimeMillis() + (60 * 1000)),
+                "OTHER_SERVICE" // unsupported scope
+        );
+        try {
+            makeRequestInternal(resource, token);
+            fail("should not be reached");
+        } catch (HttpClientErrorException ex) {
+            exception = ex;
+        }
+
+        assertClientError(exception, 401, "Unauthorized", "Authentication is required");
+    }
+
+    @Test
+    void should_return_401_if_authentication_fails_expired() throws JsonProcessingException {
+        HttpClientErrorException exception = null;
+        String token = createToken(
+                new Date(System.currentTimeMillis() - (60000)),
+                new Date(System.currentTimeMillis() - (30000)), // expires in the past
+                "PUBLIC_SERVICE"
+        );
+        try {
+            makeRequestInternal(resource, token);
+            fail("should not be reached");
+        } catch (HttpClientErrorException ex) {
+            exception = ex;
+        }
+
+        assertClientError(exception, 401, "Unauthorized", "Authentication is required");
+    }
+
+    @Test
+    void should_return_401_if_authentication_missing_expires() throws JsonProcessingException {
+        HttpClientErrorException exception = null;
+        String token = createToken(
+                new Date(System.currentTimeMillis() - (60000)),
+                null, // missing expiresAt
+                "PUBLIC_SERVICE"
+        );
+        try {
+            makeRequestInternal(resource, token);
+            fail("should not be reached");
+        } catch (HttpClientErrorException ex) {
+            exception = ex;
+        }
+
+        assertClientError(exception, 401, "Unauthorized", "Authentication is required");
+    }
+
+    @Test
+    void should_return_401_if_authentication_missing_issuedAt() throws JsonProcessingException {
+        HttpClientErrorException exception = null;
+        String token = createToken(
+                null, // missing issuedAt
+                new Date(System.currentTimeMillis() + (60000)),
+                "PUBLIC_SERVICE"
+        );
+        try {
+            makeRequestInternal(resource, token);
+            fail("should not be reached");
+        } catch (HttpClientErrorException ex) {
+            exception = ex;
+        }
+
+        assertClientError(exception, 401, "Unauthorized", "Authentication is required");
+    }
+
+    @Test
+    void should_return_401_if_invalid_authorization_header() throws JsonProcessingException {
+        HttpClientErrorException exception = null;
+        String token = createToken(
+                new Date(System.currentTimeMillis() - (60000)),
+                new Date(System.currentTimeMillis() + (60000)),
+                "PUBLIC_SERVICE"
+        );
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
+        headers.set("Authorization", "Bear " + token); // not a correct authorization header
+        try {
+            makeRequestInternal(resource, headers);
+            fail("should not be reached");
+        } catch (HttpClientErrorException ex) {
+            exception = ex;
+        }
+
+        assertClientError(exception, 401, "Unauthorized", "Authentication is required");
+    }
+
+    private Message makeValidRequest() {
+        return makeValidRequest(resource);
+    }
+
+    private Message makeValidRequest(String resource) {
+        String token = createToken("PUBLIC_SERVICE", "PRIVATE_SERVICE");
+        return makeRequestInternal(resource, token);
+    }
+
+    private Message makeRequestWithScopes(String... scope) {
+        String token = createToken(scope);
+        return makeRequest(token);
+    }
+
+    private Message makeRequest(String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.set("X-CorrelationId", UUID.randomUUID().toString());
+        if (token != null) {
+            headers.setBearerAuth(token);
+        }
+        return makeRequestInternal(resource, headers);
+    }
+
+    private Message makeRequestInternal(String resource, String token) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
+        headers.set("X-CorrelationId", UUID.randomUUID().toString());
+        if (token != null) {
+            headers.setBearerAuth(token);
+        }
+
+        return makeRequestInternal(resource, headers);
+    }
+
+    private Message makeRequestInternal(String resource, HttpHeaders headers) {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         String url = String.format("http://%s/%s", host, resource);
         ResponseEntity<Message> response = restTemplate.exchange(url, HttpMethod.GET, entity,
@@ -98,11 +251,36 @@ class ApplicationTests {
         return response.getBody();
     }
 
+    private String createToken(String... scope) {
+        return createTokenInternal(
+                authTokenSigningKey,
+                new Date(System.currentTimeMillis()),
+                new Date(System.currentTimeMillis() + (60 * 1000)),
+                scope
+        );
+    }
+
+    private String createToken(Date issuedAt, Date expiresAt, String... scope) {
+        return createTokenInternal(authTokenSigningKey, issuedAt, expiresAt, scope);
+    }
+
+    private String createTokenInternal(String tokenKey, Date issuedAt, Date expiresAt, String... scope) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put("scopes", Arrays.stream(scope).distinct().collect(Collectors.toList()));
+        return Jwts.builder()
+                .setClaims(claims)
+                .setIssuedAt(issuedAt)
+                .setExpiration(expiresAt)
+                .signWith(SignatureAlgorithm.HS256, tokenKey)
+                .compact();
+    }
+
     private void assertClientError(HttpClientErrorException ex, int expectedStatus, String expectedErrorSubstring, String expectedMessageSubstring) throws JsonProcessingException {
         assertThat(ex).isNotNull();
         String responseBody = ex.getResponseBodyAsString();
         assertThat(responseBody).isNotNull();
-        Map<String,Object> json = objectMapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {});
+        Map<String, Object> json = objectMapper.readValue(responseBody, new TypeReference<Map<String, Object>>() {
+        });
         System.out.println(json);
 
         Integer status = (Integer) json.get("status");

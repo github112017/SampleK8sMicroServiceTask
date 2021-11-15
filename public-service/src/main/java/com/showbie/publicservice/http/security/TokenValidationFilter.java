@@ -2,6 +2,7 @@ package com.showbie.publicservice.http.security;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
@@ -26,7 +27,14 @@ import java.util.stream.Collectors;
  */
 @Component
 public class TokenValidationFilter extends OncePerRequestFilter {
+    private static final String AUTHORIZATION_HEADER_BEARER_PREFIX = "Bearer ";
+    private static String AUTHORIZATION_HEADER_NAME = "Authorization";
+
     Logger logger = LoggerFactory.getLogger(getClass());
+
+
+    @Value("${auth.token.key}")
+    private String tokenVerificationKey;
 
     /**
      * Authenticate the request by validating the bearer token in the request's
@@ -47,26 +55,31 @@ public class TokenValidationFilter extends OncePerRequestFilter {
         SecurityContextHolder.clearContext();
 
         // ensure the request contains an authorization header including a bearer token
-        // TODO: implement this
-        TokenParser tokenParser = new TokenParser(null);
+        String header = request.getHeader(AUTHORIZATION_HEADER_NAME);
+        if (header != null && header.startsWith(AUTHORIZATION_HEADER_BEARER_PREFIX)) {
+            TokenParser tokenParser = new TokenParser(
+                    tokenVerificationKey,
+                    header.substring(AUTHORIZATION_HEADER_BEARER_PREFIX.length())
+            );
 
-        // if token is valid then set security context
-        if (tokenParser.isValid()) {
-            logger.info("Authenticated user {} with scopes {}", tokenParser.getPrinciple(), tokenParser.getScopes());
-            SecurityContext context = SecurityContextHolder.createEmptyContext();
-            context.setAuthentication(createAuthenticationPrinciple(tokenParser.getPrinciple(), tokenParser.getScopes()));
-            SecurityContextHolder.setContext(context);
+            // if token is valid then set security context
+            if (tokenParser.isValid()) {
+                logger.info("Request authenticated via JWT with scopes {}", tokenParser.getScopes());
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(createAuthenticationPrinciple(tokenParser.getScopes()));
+                SecurityContextHolder.setContext(context);
+            }
         }
 
         // continue the filter chain
         filterChain.doFilter(request, response);
     }
 
-    Authentication createAuthenticationPrinciple(String email, List<String> scopes) {
+    Authentication createAuthenticationPrinciple(List<String> scopes) {
         List<GrantedAuthority> authorities = scopes.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
-        User user = new User(email, "", authorities);
+        User user = new User("authenticated", "", authorities);
         return new UsernamePasswordAuthenticationToken(user, user.getPassword(), user.getAuthorities());
     }
 }
