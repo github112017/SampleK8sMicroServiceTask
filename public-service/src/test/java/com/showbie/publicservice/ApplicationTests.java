@@ -50,22 +50,24 @@ class ApplicationTests {
     @Test
     void should_return_message_public_service_happy_path() {
 
-        Message message = makeValidRequest();
+        Message message = makeRequestWithScopes("PUBLIC_SERVICE");
 
         assertThat(message).isNotNull();
-        assertThat(message.getText()).isNotNull();
-        System.out.println(message.getText());
+        assertThat(message.getPublicText()).isNotNull();
+        assertThat(message.getPrivateText()).isNull();
+        System.out.println(message.getPublicText());
     }
 
     @Test
     void should_return_messages_public_and_internal_service_happy_path() {
-        fail("NOT IMPLEMENTED");
 
-        Message message = makeValidRequest();
+        Message message = makeRequestWithScopes("PUBLIC_SERVICE", "PRIVATE_SERVICE");
 
         assertThat(message).isNotNull();
-        assertThat(message.getText()).isNotNull();
-        System.out.println(message.getText());
+        assertThat(message.getPublicText()).isNotNull();
+        assertThat(message.getPrivateText()).isNotNull();
+        System.out.println(message.getPublicText());
+        System.out.println(message.getPrivateText());
     }
 
     @Test

@@ -5,20 +5,32 @@ package com.showbie.publicservice.models;
  */
 public class Message {
 
-    private String text;
+    private String publicText;
+    private String privateText;
 
-    public Message() {}
-
-    public Message(String text) {
-        this.text = text;
+    public Message(String publicText) {
+        this(publicText, null);
     }
 
-    public String getText() {
-        return text;
+    public Message(String publicText, String privateText) {
+        this.publicText = publicText;
+        this.privateText = privateText;
     }
 
-    public void setText(String text) {
-        this.text = text;
+    public String getPublicText() {
+        return publicText;
+    }
+
+    public void setPublicText(String publicText) {
+        this.publicText = publicText;
+    }
+
+    public String getPrivateText() {
+        return privateText;
+    }
+
+    public void setPrivateText(String privateText) {
+        this.privateText = privateText;
     }
 
 }
