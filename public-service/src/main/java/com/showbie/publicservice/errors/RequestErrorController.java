@@ -29,6 +29,7 @@ public class RequestErrorController extends AbstractErrorController {
 
     private final String notFoundMessage = "Oops, we can't seem to find what you are looking for";
     private final String internalServerErrorMessage = "Sorry about that, something went wrong on our end";
+    private final String unauthenticatedMessage = "Authentication is required, please include a valid token";
 
     public RequestErrorController(final ErrorAttributes errorAttributes) {
         super(errorAttributes, Collections.emptyList());
@@ -48,10 +49,15 @@ public class RequestErrorController extends AbstractErrorController {
     public Map<String, Object> handleError(HttpServletRequest request) {
         HttpStatus status = this.getStatus(request);
         Map<String, Object> attributes = null;
-        if (status == HttpStatus.NOT_FOUND) {
-            attributes = buildAttributes(new Date(), status, notFoundMessage);
-        } else {
-            attributes = buildAttributes(new Date(), HttpStatus.INTERNAL_SERVER_ERROR, internalServerErrorMessage);
+        switch (status) {
+            case UNAUTHORIZED:
+                attributes = buildAttributes(new Date(), status, unauthenticatedMessage);
+                break;
+            case NOT_FOUND:
+                attributes = buildAttributes(new Date(), status, notFoundMessage);
+                break;
+            default:
+                attributes = buildAttributes(new Date(), HttpStatus.INTERNAL_SERVER_ERROR, internalServerErrorMessage);
         }
         return attributes;
     }
