@@ -12,7 +12,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class TokenParserTest {
 
-    private String signingKey = new String(Base64.getEncoder().encode("horseBearEagle5".getBytes()));
+    private String signingKey = "password";
 
     @Test
     public void knownScope_success() {
