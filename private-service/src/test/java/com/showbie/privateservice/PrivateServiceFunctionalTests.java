@@ -1,9 +1,9 @@
-package com.showbie.publicservice;
+package com.showbie.privateservice;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.showbie.common.models.ExternalMessage;
+import com.showbie.common.models.InternalMessage;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.junit.jupiter.api.Test;
@@ -21,14 +21,14 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
 
 /**
- * Functional tests used to validate public-service behavior.
+ * Functional tests used to validate private-service behavior.
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, properties = {
         "auth.token.key=ABC123"
 })
-class PublicServiceFunctionalTests {
+class PrivateServiceFunctionalTests {
 
-    @Value("${request.host:localhost:8081}")
+    @Value("${request.host:localhost:8082}")
     private String host;
 
     @Value("${request.resource:message}")
@@ -53,25 +53,12 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_message_public_service_happy_path() {
 
-        ExternalMessage message = makeRequestWithScopes("PUBLIC_SERVICE");
+        InternalMessage message = makeRequestWithScopes("PRIVATE_SERVICE");
 
         assertThat(message).isNotNull();
-        assertThat(message.getPublicText()).isNotNull();
-        assertThat(message.getPrivateText()).isNull();
-        System.out.println(message.getPublicText());
+        assertThat(message.getText()).isNotNull();
+        System.out.println(message.getText());
     }
-
-//    @Test
-//    void should_return_messages_public_and_internal_service_happy_path() {
-//
-//        ExternalMessage message = makeRequestWithScopes("PUBLIC_SERVICE", "PRIVATE_SERVICE");
-//
-//        assertThat(message).isNotNull();
-//        assertThat(message.getPublicText()).isNotNull();
-//        assertThat(message.getPrivateText()).isNotNull();
-//        System.out.println(message.getPublicText());
-//        System.out.println(message.getPrivateText());
-//    }
 
     @Test
     void should_return_not_found_if_invalid_resource() throws JsonProcessingException {
@@ -107,7 +94,7 @@ class PublicServiceFunctionalTests {
                 "not_the_token_key", // signed with an unexpected key
                 new Date(System.currentTimeMillis()),
                 new Date(System.currentTimeMillis() + (60 * 1000)),
-                "PUBLIC_SERVICE"
+                "PRIVATE_SERVICE"
         );
         try {
             makeRequestInternal(resource, token);
@@ -125,7 +112,7 @@ class PublicServiceFunctionalTests {
         String token = createToken(
                 new Date(System.currentTimeMillis()),
                 new Date(System.currentTimeMillis() + (60 * 1000)),
-                "OTHER_SERVICE" // unsupported scope
+                "PUBLIC_SERVICE" // unsupported scope
         );
         try {
             makeRequestInternal(resource, token);
@@ -143,7 +130,7 @@ class PublicServiceFunctionalTests {
         String token = createToken(
                 new Date(System.currentTimeMillis() - (60000)),
                 new Date(System.currentTimeMillis() - (30000)), // expires in the past
-                "PUBLIC_SERVICE"
+                "PRIVATE_SERVICE"
         );
         try {
             makeRequestInternal(resource, token);
@@ -161,7 +148,7 @@ class PublicServiceFunctionalTests {
         String token = createToken(
                 new Date(System.currentTimeMillis() - (60000)),
                 null, // missing expiresAt
-                "PUBLIC_SERVICE"
+                "PRIVATE_SERVICE"
         );
         try {
             makeRequestInternal(resource, token);
@@ -179,7 +166,7 @@ class PublicServiceFunctionalTests {
         String token = createToken(
                 null, // missing issuedAt
                 new Date(System.currentTimeMillis() + (60000)),
-                "PUBLIC_SERVICE"
+                "PRIVATE_SERVICE"
         );
         try {
             makeRequestInternal(resource, token);
@@ -197,7 +184,7 @@ class PublicServiceFunctionalTests {
         String token = createToken(
                 new Date(System.currentTimeMillis() - (60000)),
                 new Date(System.currentTimeMillis() + (60000)),
-                "PUBLIC_SERVICE"
+                "PRIVATE_SERVICE"
         );
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
@@ -213,21 +200,21 @@ class PublicServiceFunctionalTests {
         assertClientError(exception, 401, "Unauthorized", "Authentication is required");
     }
 
-    private ExternalMessage makeValidRequest() {
+    private InternalMessage makeValidRequest() {
         return makeValidRequest(resource);
     }
 
-    private ExternalMessage makeValidRequest(String resource) {
-        String token = createToken("PUBLIC_SERVICE", "PRIVATE_SERVICE");
+    private InternalMessage makeValidRequest(String resource) {
+        String token = createToken("PRIVATE_SERVICE");
         return makeRequestInternal(resource, token);
     }
 
-    private ExternalMessage makeRequestWithScopes(String... scope) {
+    private InternalMessage makeRequestWithScopes(String... scope) {
         String token = createToken(scope);
         return makeRequest(token);
     }
 
-    private ExternalMessage makeRequest(String token) {
+    private InternalMessage makeRequest(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
@@ -237,7 +224,7 @@ class PublicServiceFunctionalTests {
         return makeRequestInternal(resource, headers);
     }
 
-    private ExternalMessage makeRequestInternal(String resource, String token) {
+    private InternalMessage makeRequestInternal(String resource, String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
@@ -248,11 +235,11 @@ class PublicServiceFunctionalTests {
         return makeRequestInternal(resource, headers);
     }
 
-    private ExternalMessage makeRequestInternal(String resource, HttpHeaders headers) {
+    private InternalMessage makeRequestInternal(String resource, HttpHeaders headers) {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         String url = String.format("http://%s/%s", host, resource);
-        ResponseEntity<ExternalMessage> response = restTemplate.exchange(url, HttpMethod.GET, entity,
-                ExternalMessage.class);
+        ResponseEntity<InternalMessage> response = restTemplate.exchange(url, HttpMethod.GET, entity,
+                InternalMessage.class);
         return response.getBody();
     }
 

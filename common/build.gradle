@@ -1,12 +1,7 @@
 plugins {
-	id 'application'
 	id 'org.springframework.boot' version '2.4.3'
 	id 'io.spring.dependency-management' version '1.0.11.RELEASE'
 	id 'java'
-}
-
-application {
-	mainClass = 'com.showbie.publicservice'
 }
 
 group = 'com.assignments'
@@ -22,7 +17,6 @@ dependencies {
 	implementation 'org.springframework.boot:spring-boot-starter-web'
 	implementation 'org.springframework.boot:spring-boot-starter-security'
 	implementation 'io.jsonwebtoken:jjwt:0.9.1'
-	implementation project(':common')
 
 	testImplementation 'org.springframework.boot:spring-boot-starter-test'
 	testImplementation 'org.springframework.security:spring-security-test'
@@ -32,21 +26,10 @@ test {
 	useJUnitPlatform()
 }
 
-task clearDockerJar(type: Delete) {
-	project.delete(files("${buildDir}/docker"))
+jar {
+	enabled = true
 }
 
-task copyDockerJar(type: Copy) {
-	from "$buildDir/libs"
-	include "**/*.jar"
-	into "$buildDir/docker"
-	rename { String fileName -> fileName.replace("-$project.version", "") }
+bootJar {
+	enabled = false
 }
-
-task docker(type: Exec) {
-	commandLine "docker", "build", ".", "-t", "jamieshowbie/$project.name:latest"
-}
-
-clearDockerJar.dependsOn build
-copyDockerJar.dependsOn clearDockerJar
-docker.dependsOn copyDockerJar

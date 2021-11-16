@@ -6,7 +6,7 @@ plugins {
 }
 
 application {
-	mainClass = 'com.showbie.publicservice'
+	mainClass = 'com.showbie.privateservice'
 }
 
 group = 'com.assignments'
@@ -44,9 +44,15 @@ task copyDockerJar(type: Copy) {
 }
 
 task docker(type: Exec) {
-	commandLine "docker", "build", ".", "-t", "jamieshowbie/$project.name:latest"
+	commandLine "docker", "build", ".", "-t", "farrenlayton/$project.name:latest"
+}
+
+task dockerPush(type: Exec) {
+	commandLine "docker", "push", "farrenlayton/$project.name:latest"
 }
 
 clearDockerJar.dependsOn build
 copyDockerJar.dependsOn clearDockerJar
 docker.dependsOn copyDockerJar
+dockerPush.dependsOn docker
+

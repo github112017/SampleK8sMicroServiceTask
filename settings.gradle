@@ -1,0 +1,5 @@
+rootProject.name = 'sample-k82-microservice-task'
+include 'common'
+include 'private-service'
+include 'public-service'
+include 'tests:integration'

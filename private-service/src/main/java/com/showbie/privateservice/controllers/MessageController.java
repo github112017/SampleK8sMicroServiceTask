@@ -1,6 +1,6 @@
-package com.showbie.publicservice.controllers;
+package com.showbie.privateservice.controllers;
 
-import com.showbie.common.models.ExternalMessage;
+import com.showbie.common.models.InternalMessage;
 import com.showbie.common.services.MessageService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,11 +21,11 @@ public class MessageController {
     }
 
     @GetMapping("/message")
-    public ExternalMessage message() {
+    public InternalMessage message() {
 
         logger.info("Starting message request");
 
-        ExternalMessage result = new ExternalMessage(messageService.getPhrase());
+        InternalMessage result = new InternalMessage(messageService.getPhrase());
 
         logger.info("Completed message request");
 
