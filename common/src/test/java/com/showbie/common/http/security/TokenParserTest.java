@@ -12,7 +12,8 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 public class TokenParserTest {
 
-    private String signingKey = "password";
+    private final String signingKey = "password";
+    private final List<String> supportedScopes = Arrays.asList("A", "B");
 
     @Test
     public void knownScope_success() {
@@ -21,17 +22,17 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() + 60000),
                 signingKey,
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isTrue();
         assertThat(parser.getScopes().size()).isEqualTo(1);
-        assertThat(parser.getScopes().contains("PUBLIC_SERVICE")).isTrue();
+        assertThat(parser.getScopes().contains("A")).isTrue();
     }
 
     @Test
@@ -41,18 +42,37 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() + 60000),
                 signingKey,
-                Arrays.asList("PUBLIC_SERVICE", "PRIVATE_SERVICE")
+                Arrays.asList("A", "B")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isTrue();
         assertThat(parser.getScopes().size()).isEqualTo(2);
-        assertThat(parser.getScopes().contains("PUBLIC_SERVICE")).isTrue();
-        assertThat(parser.getScopes().contains("PRIVATE_SERVICE")).isTrue();
+        assertThat(parser.getScopes().contains("A")).isTrue();
+        assertThat(parser.getScopes().contains("B")).isTrue();
+    }
+
+    @Test
+    public void missingSupportedScopes_failure() {
+        // arrange
+        String token = createToken(
+                new Date(System.currentTimeMillis() - 60000),
+                new Date(System.currentTimeMillis() + 60000),
+                signingKey,
+                Collections.singletonList("A")
+        );
+        System.out.println(token);
+
+        // act
+        TokenParser parser = new TokenParser(signingKey, Collections.emptyList(), token);
+
+        // assert
+        assertThat(parser.isValid()).isFalse();
+        assertThat(parser.getScopes().size()).isEqualTo(0);
     }
 
     @Test
@@ -67,7 +87,7 @@ public class TokenParserTest {
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -81,12 +101,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() + 60000),
                 signingKey,
-                Arrays.asList("UNKNOWN_A", "UNKNOWN_B") // all unsupported scopes
+                Arrays.asList("C", "D") // all unsupported scopes
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -100,12 +120,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() + 60000),
                 signingKey,
-                Arrays.asList("PUBLIC_SERVICE", "PRIVATE_SERVICE", "UNKNOWN") // includes unsupported scope
+                Arrays.asList("A", "B", "C") // includes unsupported scope
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -124,7 +144,7 @@ public class TokenParserTest {
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -138,12 +158,12 @@ public class TokenParserTest {
                 null, // no issuedAt
                 new Date(System.currentTimeMillis() + 60000),
                 signingKey,
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -157,12 +177,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() + 60000), // in the future
                 new Date(System.currentTimeMillis() + 120000),
                 signingKey,
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -176,12 +196,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 null, // no expiresAt
                 signingKey,
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -195,12 +215,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() - 50000), // before now
                 signingKey,
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -214,12 +234,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() + 60000),
                 new Date(System.currentTimeMillis() - 60000), // before the issuedAt
                 signingKey,
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -233,12 +253,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() + 60000),
                 null, // do not sign
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -252,12 +272,12 @@ public class TokenParserTest {
                 new Date(System.currentTimeMillis() - 60000),
                 new Date(System.currentTimeMillis() + 60000),
                 "123456", // unexpected signing key
-                Collections.singletonList("PUBLIC_SERVICE")
+                Collections.singletonList("A")
         );
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();
@@ -271,7 +291,7 @@ public class TokenParserTest {
         System.out.println(token);
 
         // act
-        TokenParser parser = new TokenParser(signingKey, token);
+        TokenParser parser = new TokenParser(signingKey, supportedScopes, token);
 
         // assert
         assertThat(parser.isValid()).isFalse();

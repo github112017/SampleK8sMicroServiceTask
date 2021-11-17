@@ -6,6 +6,7 @@ import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.lang.NonNull;
 
 import java.util.*;
 
@@ -14,9 +15,6 @@ import java.util.*;
  */
 public class TokenParser {
     Logger logger = LoggerFactory.getLogger(getClass());
-
-    // TODO: move this to application properties and pass in via constructor
-    public static final List<String> SUPPORTED_SCOPES = Arrays.asList("PUBLIC_SERVICE", "PRIVATE_SERVICE");
 
     private final boolean isValid;
     private final List<String> scopes;
@@ -27,7 +25,7 @@ public class TokenParser {
      * @param verificationKey Verification signing key.
      * @param token           Signed JWT string.
      */
-    public TokenParser(String verificationKey, String token) {
+    public TokenParser(@NonNull String verificationKey, @NonNull Collection<String> supportedScopes, @NonNull String token) {
         // GOAL - verify the token signature
         Jws<Claims> claimsJws;
         try {
@@ -62,7 +60,7 @@ public class TokenParser {
         scopes = claimsJws.getBody().get("scopes", ArrayList.class);
 
         // scopes are valid if not empty and all are supported
-        boolean validScopes = scopes != null && !scopes.isEmpty() && SUPPORTED_SCOPES.containsAll(scopes);
+        boolean validScopes = scopes != null && !scopes.isEmpty() && supportedScopes.containsAll(scopes);
         if (!validScopes) {
             logger.debug("Token parsing failure: missing or unsupported scopes={}", scopes);
         }

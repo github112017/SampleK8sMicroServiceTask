@@ -27,7 +27,7 @@ import java.util.stream.Collectors;
 /**
  * Implements a request authentication filter that validates the authorization
  * header's bearer token.
- *
+ * <p>
  * Also extracts the correlation id from the incoming request and stores it for
  * logging and subsequent outgoing requests. This allows us to observe via
  * logging incoming requests as they travel through our services.
@@ -43,20 +43,23 @@ public class TokenValidationFilter extends OncePerRequestFilter {
     Logger logger = LoggerFactory.getLogger(getClass());
 
 
-    @Value("${auth.token.key}")
+    @Value("${auth.token.key}") // startup will be halted if this is undefined
     private String tokenVerificationKey;
+
+    @Value("#{'${auth.token.scopes}'.split('\\s*,\\s*')}") // startup will be halted if this is undefined
+    private List<String> supportedScopes;
 
     /**
      * Authenticate the request by validating the bearer token in the request's
      * authorization header.
-     *
+     * <p>
      * Guaranteed to be invoked once per request within a single request thread.
      * See {@link #shouldNotFilterAsyncDispatch()} for details.
      * <p>Provides HttpServletRequest and HttpServletResponse arguments instead of the
      * default ServletRequest and ServletResponse ones.
      *
-     * @param request HTTP request object
-     * @param response HTTP response object
+     * @param request     HTTP request object
+     * @param response    HTTP response object
      * @param filterChain Authentication filter chain
      */
     @Override
@@ -74,6 +77,7 @@ public class TokenValidationFilter extends OncePerRequestFilter {
         if (header != null && header.startsWith(AUTHORIZATION_HEADER_BEARER_PREFIX)) {
             com.showbie.common.http.security.TokenParser tokenParser = new com.showbie.common.http.security.TokenParser(
                     tokenVerificationKey,
+                    supportedScopes,
                     header.substring(AUTHORIZATION_HEADER_BEARER_PREFIX.length())
             );
 
@@ -93,6 +97,7 @@ public class TokenValidationFilter extends OncePerRequestFilter {
     /**
      * Store the request's correlation id so that it can be logged here and on
      * nested http requests to other services.
+     *
      * @param request HTTP request object.
      */
     private void storeRequestCorrelationId(HttpServletRequest request) {
@@ -107,6 +112,7 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
     /**
      * Generate an authentication principle for use in SpringFramework.
+     *
      * @param scopes Valid scopes.
      * @return Authentication principle.
      */
