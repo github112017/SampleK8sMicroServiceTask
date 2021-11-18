@@ -5,9 +5,9 @@ plugins {
 	id 'java'
 }
 
-application {
-	mainClass = 'com.showbie.privateservice'
-}
+//application {
+//	mainClass = 'com.showbie.Application'
+//}
 
 group = 'com.assignments'
 version = '1.0.0-SNAPSHOT'
@@ -47,12 +47,7 @@ task docker(type: Exec) {
 	commandLine "docker", "build", ".", "-t", "farrenlayton/$project.name:latest"
 }
 
-task dockerPush(type: Exec) {
-	commandLine "docker", "push", "farrenlayton/$project.name:latest"
-}
-
 clearDockerJar.dependsOn build
 copyDockerJar.dependsOn clearDockerJar
 docker.dependsOn copyDockerJar
-dockerPush.dependsOn docker
 

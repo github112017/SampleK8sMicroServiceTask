@@ -10,6 +10,7 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import javax.annotation.PostConstruct;
 import java.util.Collections;
 
 /**
@@ -30,6 +31,11 @@ public class PrivateServiceClient {
     @Autowired
     private void setRestTemplate(RestTemplate restTemplate) {
         this.restTemplate = restTemplate;
+    }
+
+    @PostConstruct
+    public void showInfo() {
+        logger.error("{} using {}", hostUri, tokenSigningKey); // TODO: REMOVE AFTER TESTING
     }
 
     public InternalMessage getMessage() {

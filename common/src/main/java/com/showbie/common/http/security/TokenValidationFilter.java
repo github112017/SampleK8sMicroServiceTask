@@ -15,6 +15,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+import javax.annotation.PostConstruct;
 import javax.servlet.FilterChain;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
@@ -47,6 +48,11 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
     @Value("#{'${auth.token.scopes}'.split('\\s*,\\s*')}") // startup will be halted if this is undefined
     private List<String> supportedScopes;
+
+    @PostConstruct
+    public void showInfo() {
+        logger.error("Using token key={} with supportedScopes={}", tokenVerificationKey, supportedScopes); // TODO: REMOVE AFTER TESTING
+    }
 
     /**
      * Authenticate the request by validating the bearer token in the request's

@@ -1,4 +1,4 @@
-rootProject.name = 'sample-k82-microservice-task'
+rootProject.name = 'sample-k8s-microservice-task'
 include 'common'
 include 'private-service'
 include 'public-service'

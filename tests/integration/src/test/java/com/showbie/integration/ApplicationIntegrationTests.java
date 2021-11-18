@@ -17,7 +17,13 @@ import java.util.stream.Collectors;
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 
 /**
- * Integration tests used to validate plumbing when services are deployed to Kubernetes.
+ * Integration tests used to validate plumbing when services are deployed together.
+ *
+ * We can assume that the functional tests have already verified correct behaviors of
+ * each service, here we are more interested in validating the correctness of the
+ * service configuration within a deployment environment. These tests should work
+ * when the services are running locally (ie. gradle bootrun) or when deployed to a
+ * Kubernetes cluster.
  */
 @SpringBootTest
 class ApplicationIntegrationTests {
@@ -39,6 +45,12 @@ class ApplicationIntegrationTests {
 	}
 
 	@Test
+	void showInfo() { // TODO: REMOVE AFTER TESTING
+		System.out.println("http://" + host + "/" + resource);
+		System.out.println(authTokenSigningKey);
+	}
+
+	@Test
 	void should_return_public_message_happy_path() {
 
 		Message message = makeRequestPublicOnly();
@@ -47,6 +59,17 @@ class ApplicationIntegrationTests {
 		assertThat(message.getPublicText()).isNotNull();
 		System.out.println("PUBLIC_MESSAGE: " + message.getPublicText());
 		assertThat(message.getPrivateText()).isNull();
+	}
+
+	@Test
+	void should_return_private_message_happy_path() {
+
+		Message message = makeRequestPrivateOnly();
+
+		assertThat(message).isNotNull();
+		assertThat(message.getPublicText()).isNull();
+		assertThat(message.getPrivateText()).isNotNull();
+		System.out.println("PRIVATE_MESSAGE: " + message.getPrivateText());
 	}
 
 	@Test
@@ -98,6 +121,11 @@ class ApplicationIntegrationTests {
 		return makeRequestInternal(resource, token);
 	}
 
+	private Message makeRequestPrivateOnly() {
+		String token = generateToken("PRIVATE_SERVICE");
+		return makeRequestInternal(resource, token);
+	}
+
 	private Message makeRequestPublicAndPrivate() {
 		String token = generateToken("PUBLIC_SERVICE", "PRIVATE_SERVICE");
 		return makeRequestInternal(resource, token);
@@ -123,7 +151,7 @@ class ApplicationIntegrationTests {
 				.setClaims(claims)
 				.setIssuedAt(new Date(nowMillis))
 				.setExpiration(new Date(nowMillis + (5 * 60 * 1000))) // 5 min from now
-				.signWith(SignatureAlgorithm.HS256, authTokenSigningKey)
+				.signWith(SignatureAlgorithm.HS256, authTokenSigningKey.getBytes())
 				.compact();
 	}
 }

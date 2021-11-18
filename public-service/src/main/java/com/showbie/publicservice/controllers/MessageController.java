@@ -43,12 +43,15 @@ public class MessageController {
         logger.info("Starting message request");
         ExternalMessage result = new ExternalMessage();
 
-        // populate result based on the provided authentication scopes
         Set<String> scopes = authenticatedTokenScopes.getScopes();
+
         if (scopes.contains("PUBLIC_SERVICE")) {
+	    logger.info("Including public message");
             result.setPublicText(messageService.getPhrase());
         }
+
         if (scopes.contains("PRIVATE_SERVICE")) {
+	    logger.info("Including private message");
             InternalMessage privateMessage = privateServiceClient.getMessage();
             result.setPrivateText(privateMessage.getText());
         }
