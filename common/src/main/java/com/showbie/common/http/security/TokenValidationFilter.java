@@ -42,7 +42,6 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
     Logger logger = LoggerFactory.getLogger(getClass());
 
-
     @Value("${auth.token.key}") // startup will be halted if this is undefined
     private String tokenVerificationKey;
 
@@ -120,6 +119,7 @@ public class TokenValidationFilter extends OncePerRequestFilter {
         List<GrantedAuthority> authorities = scopes.stream()
                 .map(SimpleGrantedAuthority::new)
                 .collect(Collectors.toList());
+        // token does not currently contain a principle name so we have no username or password
         User user = new User("authenticated", "", authorities);
         return new UsernamePasswordAuthenticationToken(user, user.getPassword(), user.getAuthorities());
     }

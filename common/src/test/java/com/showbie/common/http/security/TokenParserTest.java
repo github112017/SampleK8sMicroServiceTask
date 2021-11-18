@@ -312,7 +312,7 @@ public class TokenParserTest {
             builder.setExpiration(expiresBy);
         }
         if (signingKey != null) {
-            builder.signWith(SignatureAlgorithm.HS256, signingKey);
+            builder.signWith(SignatureAlgorithm.HS256, signingKey.getBytes());
         }
         return builder.compact();
     }

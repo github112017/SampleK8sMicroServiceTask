@@ -8,6 +8,9 @@ public class ExternalMessage {
     private String publicText;
     private String privateText;
 
+    public ExternalMessage() {
+    }
+
     public ExternalMessage(String publicText) {
         this(publicText, null);
     }

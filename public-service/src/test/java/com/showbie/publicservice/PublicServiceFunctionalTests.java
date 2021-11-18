@@ -3,32 +3,57 @@ package com.showbie.publicservice;
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.showbie.common.http.security.TokenGenerator;
 import com.showbie.common.models.ExternalMessage;
-import io.jsonwebtoken.Jwts;
-import io.jsonwebtoken.SignatureAlgorithm;
+import com.showbie.common.models.InternalMessage;
+import com.showbie.publicservice.services.PrivateServiceClient;
 import org.junit.jupiter.api.Test;
+import org.junit.runner.RunWith;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.boot.web.server.LocalServerPort;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.*;
+import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.*;
-import java.util.stream.Collectors;
+import java.util.Collections;
+import java.util.Date;
+import java.util.Map;
+import java.util.UUID;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.mock;
 
 /**
  * Functional tests used to validate public-service behavior.
  */
-@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.DEFINED_PORT, properties = {
-        "auth.token.key=ABC123"
+@RunWith(SpringRunner.class)
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
+        "auth.token.key=ABC123",
+        "private.service.auth.token.key=DEF456",
+        "spring.main.allow-bean-definition-overriding=true", // required to load our mocks below
 })
-class PublicServiceFunctionalTests {
+public class PublicServiceFunctionalTests {
+    @TestConfiguration
+    public static class TestConfig {
+        @Primary
+        @Bean
+        public PrivateServiceClient privateServiceClient() {
+            return mock(PrivateServiceClient.class);
+        }
+    }
 
-    @Value("${request.host:localhost:8081}")
+    @LocalServerPort
+    private int port;
+
+    @Value("${request.host:localhost}")
     private String host;
 
     @Value("${request.resource:message}")
@@ -39,6 +64,7 @@ class PublicServiceFunctionalTests {
 
     private RestTemplate restTemplate;
     private ObjectMapper objectMapper;
+    private PrivateServiceClient privateServiceClientMock;
 
     @Autowired
     public void setRestTemplate(RestTemplate restTemplate) {
@@ -48,6 +74,11 @@ class PublicServiceFunctionalTests {
     @Autowired
     public void setObjectMapper(ObjectMapper objectMapper) {
         this.objectMapper = objectMapper;
+    }
+
+    @Autowired
+    public void setPrivateServiceClient(PrivateServiceClient privateServiceClient) {
+        this.privateServiceClientMock = privateServiceClient;
     }
 
     @Test
@@ -61,17 +92,36 @@ class PublicServiceFunctionalTests {
         System.out.println(message.getPublicText());
     }
 
-//    @Test
-//    void should_return_messages_public_and_internal_service_happy_path() {
-//
-//        ExternalMessage message = makeRequestWithScopes("PUBLIC_SERVICE", "PRIVATE_SERVICE");
-//
-//        assertThat(message).isNotNull();
-//        assertThat(message.getPublicText()).isNotNull();
-//        assertThat(message.getPrivateText()).isNotNull();
-//        System.out.println(message.getPublicText());
-//        System.out.println(message.getPrivateText());
-//    }
+    @Test
+    void should_return_message_private_service_happy_path() {
+        String privateMessage = "Hello World!";
+        doReturn(new InternalMessage(privateMessage))
+                .when(privateServiceClientMock).getMessage();
+
+        ExternalMessage message = makeRequestWithScopes("PRIVATE_SERVICE");
+
+        assertThat(message).isNotNull();
+        assertThat(message.getPublicText()).isNull();
+        assertThat(message.getPrivateText()).isNotNull();
+        System.out.println(message.getPrivateText());
+        assertThat(message.getPrivateText()).isEqualTo(privateMessage);
+    }
+
+    @Test
+    void should_return_messages_public_and_internal_service_happy_path() {
+        String privateMessage = "Hello World!";
+        doReturn(new InternalMessage(privateMessage))
+                .when(privateServiceClientMock).getMessage();
+
+        ExternalMessage message = makeRequestWithScopes("PUBLIC_SERVICE", "PRIVATE_SERVICE");
+
+        assertThat(message).isNotNull();
+        assertThat(message.getPublicText()).isNotNull();
+        System.out.println(message.getPublicText());
+        assertThat(message.getPrivateText()).isNotNull();
+        System.out.println(message.getPrivateText());
+        assertThat(message.getPrivateText()).isEqualTo(privateMessage);
+    }
 
     @Test
     void should_return_not_found_if_invalid_resource() throws JsonProcessingException {
@@ -103,10 +153,9 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_401_if_authentication_fails_wrong_key() throws JsonProcessingException {
         HttpClientErrorException exception = null;
-        String token = createTokenInternal(
+        String token = TokenGenerator.createTokenHS256(
                 "not_the_token_key", // signed with an unexpected key
-                new Date(System.currentTimeMillis()),
-                new Date(System.currentTimeMillis() + (60 * 1000)),
+                5000,
                 "PUBLIC_SERVICE"
         );
         try {
@@ -122,9 +171,9 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_401_if_authentication_fails_wrong_scope() throws JsonProcessingException {
         HttpClientErrorException exception = null;
-        String token = createToken(
-                new Date(System.currentTimeMillis()),
-                new Date(System.currentTimeMillis() + (60 * 1000)),
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
+                5000,
                 "OTHER_SERVICE" // unsupported scope
         );
         try {
@@ -140,7 +189,8 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_401_if_authentication_fails_expired() throws JsonProcessingException {
         HttpClientErrorException exception = null;
-        String token = createToken(
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
                 new Date(System.currentTimeMillis() - (60000)),
                 new Date(System.currentTimeMillis() - (30000)), // expires in the past
                 "PUBLIC_SERVICE"
@@ -158,7 +208,8 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_401_if_authentication_missing_expires() throws JsonProcessingException {
         HttpClientErrorException exception = null;
-        String token = createToken(
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
                 new Date(System.currentTimeMillis() - (60000)),
                 null, // missing expiresAt
                 "PUBLIC_SERVICE"
@@ -176,7 +227,8 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_401_if_authentication_missing_issuedAt() throws JsonProcessingException {
         HttpClientErrorException exception = null;
-        String token = createToken(
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
                 null, // missing issuedAt
                 new Date(System.currentTimeMillis() + (60000)),
                 "PUBLIC_SERVICE"
@@ -194,9 +246,9 @@ class PublicServiceFunctionalTests {
     @Test
     void should_return_401_if_invalid_authorization_header() throws JsonProcessingException {
         HttpClientErrorException exception = null;
-        String token = createToken(
-                new Date(System.currentTimeMillis() - (60000)),
-                new Date(System.currentTimeMillis() + (60000)),
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
+                5000,
                 "PUBLIC_SERVICE"
         );
         HttpHeaders headers = new HttpHeaders();
@@ -218,12 +270,20 @@ class PublicServiceFunctionalTests {
     }
 
     private ExternalMessage makeValidRequest(String resource) {
-        String token = createToken("PUBLIC_SERVICE", "PRIVATE_SERVICE");
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
+                5000,
+                "PUBLIC_SERVICE", "PRIVATE_SERVICE"
+        );
         return makeRequestInternal(resource, token);
     }
 
     private ExternalMessage makeRequestWithScopes(String... scope) {
-        String token = createToken(scope);
+        String token = TokenGenerator.createTokenHS256(
+                authTokenSigningKey,
+                5000,
+                scope
+        );
         return makeRequest(token);
     }
 
@@ -250,34 +310,10 @@ class PublicServiceFunctionalTests {
 
     private ExternalMessage makeRequestInternal(String resource, HttpHeaders headers) {
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        String url = String.format("http://%s/%s", host, resource);
+        String url = String.format("http://%s:%d/%s", host, port, resource);
         ResponseEntity<ExternalMessage> response = restTemplate.exchange(url, HttpMethod.GET, entity,
                 ExternalMessage.class);
         return response.getBody();
-    }
-
-    private String createToken(String... scope) {
-        return createTokenInternal(
-                authTokenSigningKey,
-                new Date(System.currentTimeMillis()),
-                new Date(System.currentTimeMillis() + (60 * 1000)),
-                scope
-        );
-    }
-
-    private String createToken(Date issuedAt, Date expiresAt, String... scope) {
-        return createTokenInternal(authTokenSigningKey, issuedAt, expiresAt, scope);
-    }
-
-    private String createTokenInternal(String tokenKey, Date issuedAt, Date expiresAt, String... scope) {
-        Map<String, Object> claims = new HashMap<>();
-        claims.put("scopes", Arrays.stream(scope).distinct().collect(Collectors.toList()));
-        return Jwts.builder()
-                .setClaims(claims)
-                .setIssuedAt(issuedAt)
-                .setExpiration(expiresAt)
-                .signWith(SignatureAlgorithm.HS256, tokenKey)
-                .compact();
     }
 
     private void assertClientError(HttpClientErrorException ex, int expectedStatus, String expectedErrorSubstring, String expectedMessageSubstring) throws JsonProcessingException {

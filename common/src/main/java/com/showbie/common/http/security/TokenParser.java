@@ -14,6 +14,14 @@ import java.util.*;
  * Utility class to parse and validate a (signed) JWT token.
  */
 public class TokenParser {
+    /* DOC - Normally this would be implemented as a service, but here we want
+     *       it to store state (although this could be refactored to return
+     *       the scopes only if the token is valid). In some circumstances a
+     *       service providing an instance of this class (factory pattern)
+     *       would be better. It depends on how the code is to be used -- for
+     *       this assignment all would work equally well.
+     */
+
     Logger logger = LoggerFactory.getLogger(getClass());
 
     private final boolean isValid;
@@ -30,11 +38,11 @@ public class TokenParser {
         Jws<Claims> claimsJws;
         try {
             claimsJws = Jwts.parser()
-                    .setSigningKey(verificationKey)
+                    .setSigningKey(verificationKey.getBytes())
                     .parseClaimsJws(token);
         } catch (JwtException e) {
             // parsing failed for any of many reasons
-            logger.debug("Token parsing failure: {}", e.getMessage());
+            logger.warn("Token parsing failure: {}", e.getMessage());
             isValid = false;
             scopes = null;
             return;
@@ -53,7 +61,7 @@ public class TokenParser {
         boolean validTimestamps = issuedAt != null && expiresBy != null
                 && issuedAt.getTime() <= now && now < expiresBy.getTime();
         if (!validTimestamps) {
-            logger.debug("Token parsing failure: required timestamps missing or out of range: iat={}, exp={}", issuedAt, expiresBy);
+            logger.warn("Token parsing failure: required timestamps missing or out of range: iat={}, exp={}", issuedAt, expiresBy);
         }
 
         // GOAL - verify payload scopes
@@ -62,7 +70,7 @@ public class TokenParser {
         // scopes are valid if not empty and all are supported
         boolean validScopes = scopes != null && !scopes.isEmpty() && supportedScopes.containsAll(scopes);
         if (!validScopes) {
-            logger.debug("Token parsing failure: missing or unsupported scopes={}", scopes);
+            logger.warn("Token parsing failure: missing or unsupported scopes={}", scopes);
         }
 
         isValid = validTimestamps && validScopes;
