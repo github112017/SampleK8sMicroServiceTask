@@ -8,7 +8,7 @@ this task:
    configuration of project dependencies.  Also, the original
    configuration confused IntelliJ causing various hangs.
 
-3. The project doesn't spell out how to ensure that the
+2. The project doesn't spell out how to ensure that the
    private-service can only accept requests from the
    public-service. There are multiple ways to ensure this, but I
    have taken a simple approach that reuses the existing token code. In
@@ -30,13 +30,24 @@ this task:
    4. If the private-service's signing key is only known to it and the
       public-service then external parties cannot make authenticated
       calls directly to private-service even if private-service was
-     exposed publicly.
+      exposed publicly.
 
-4. All common code has been abstracted to a library, especially
+3. The `Message` POJO class was renamed to `ExternalMessage` and modified
+   to contain two strings, the publicText and the privateText. The
+   `InternalMessage` POJO returned by the private-service is the same as
+   the original `Message`.
+
+4. Updated `RequestErrorController` to return a consistent response when
+   encountering unauthorized requests. It was returning a 401 status with
+   a JSON body containing a 501 status and an internal service error
+   message. The HTTP status code in the response and in the JSON body
+   (and error message) are now consistent.
+
+5. All common code has been abstracted to a library, especially
    security-related classes; this ensures common behavior across all, and
    new, services.
 
-5. Multiple levels of testing is provided (there is some overlap):
+6. Multiple levels of testing is provided (there is some overlap):
 
    1. Unit tests for classes providing non-trivial business
       logic.  These are intended to focus on algorithmic correctness,
