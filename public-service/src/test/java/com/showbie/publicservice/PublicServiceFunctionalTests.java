@@ -36,8 +36,8 @@ import static org.mockito.Mockito.mock;
  */
 @RunWith(SpringRunner.class)
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
-        "auth.token.key=ABC123",
-        "private.service.auth.token.key=DEF456",
+        "auth.token.key=ABC123",                             // required property
+        "private.service.auth.token.key=DEF456",             // required property
         "spring.main.allow-bean-definition-overriding=true", // required to load our mocks below
 })
 public class PublicServiceFunctionalTests {
@@ -263,10 +263,6 @@ public class PublicServiceFunctionalTests {
         }
 
         assertClientError(exception, 401, "Unauthorized", "Authentication is required");
-    }
-
-    private ExternalMessage makeValidRequest() {
-        return makeValidRequest(resource);
     }
 
     private ExternalMessage makeValidRequest(String resource) {

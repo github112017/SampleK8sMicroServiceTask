@@ -83,7 +83,7 @@ class PrivateServiceFunctionalTests {
     void should_return_401_if_not_authenticated() throws JsonProcessingException {
         HttpClientErrorException exception = null;
         try {
-            makeRequestInternal(resource, (String) null); // no tpken supplied, thus no Authorization header
+            makeRequestInternal(resource, (String) null); // no token supplied, thus no Authorization header
             fail("should not be reached");
         } catch (HttpClientErrorException ex) {
             exception = ex;
@@ -167,10 +167,6 @@ class PrivateServiceFunctionalTests {
         }
 
         assertClientError(exception, 401, "Unauthorized", "Authentication is required");
-    }
-
-    private InternalMessage makeValidRequest() {
-        return makeValidRequest(resource);
     }
 
     private InternalMessage makeValidRequest(String resource) {
