@@ -20,7 +20,7 @@ import java.util.Collections;
 public class PrivateServiceClient {
     Logger logger = LoggerFactory.getLogger(getClass());
 
-    @Value("${private.service.host.uri:http://localhost:8082/message}")
+    @Value("${private.service.host.uri}")       // startup will be halted if this is undefined
     private String hostUri;
 
     @Value("${private.service.auth.token.key}") // startup will be halted if this is undefined
