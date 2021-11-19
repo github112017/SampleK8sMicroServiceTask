@@ -62,6 +62,6 @@ public class PrivateServiceClient {
     }
 
     private String generateShortLivedToken() {
-        return TokenGenerator.createTokenHS256(tokenSigningKey, 10000, "PRIVATE_SERVICE");
+        return TokenGenerator.createTokenHS256(tokenSigningKey, 30000, "PRIVATE_SERVICE");
     }
 }

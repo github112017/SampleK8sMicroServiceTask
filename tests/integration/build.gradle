@@ -31,6 +31,7 @@ dependencies {
 
 testlogger {
 	theme 'mocha'
+	showStandardStreams = true
 }
 
 test {
