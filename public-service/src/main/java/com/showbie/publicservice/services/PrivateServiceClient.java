@@ -1,7 +1,7 @@
 package com.showbie.publicservice.services;
 
 import com.showbie.common.http.security.TokenGenerator;
-import com.showbie.common.models.InternalMessage;
+import com.showbie.common.models.Message;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -38,7 +38,7 @@ public class PrivateServiceClient {
         logger.error("{} using {}", hostUri, tokenSigningKey); // TODO: REMOVE AFTER TESTING
     }
 
-    public InternalMessage getMessage() {
+    public Message getMessage() {
         // DOC - Usually an auth provider is used to obtain a token at some
         //       (small) cost; there it makes sense to cache the token for
         //       reuse until it approaches the expiry time. Here we create
@@ -52,11 +52,11 @@ public class PrivateServiceClient {
 
         // make the request
         HttpEntity<String> entity = new HttpEntity<>(headers);
-        ResponseEntity<InternalMessage> response = restTemplate.exchange(
+        ResponseEntity<Message> response = restTemplate.exchange(
                 hostUri,
                 HttpMethod.GET,
                 entity,
-                InternalMessage.class
+                Message.class
         );
         return response.getBody();
     }

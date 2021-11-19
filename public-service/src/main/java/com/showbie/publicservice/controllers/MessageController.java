@@ -1,8 +1,7 @@
 package com.showbie.publicservice.controllers;
 
 import com.showbie.common.http.security.AuthenticatedTokenScopes;
-import com.showbie.common.models.ExternalMessage;
-import com.showbie.common.models.InternalMessage;
+import com.showbie.common.models.Message;
 import com.showbie.common.services.MessageService;
 import com.showbie.publicservice.services.PrivateServiceClient;
 import org.slf4j.Logger;
@@ -11,6 +10,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Set;
 
 @RestController
@@ -38,22 +39,21 @@ public class MessageController {
     }
 
     @GetMapping("/message")
-    public ExternalMessage message() {
+    public List<Message> message() {
 
         logger.info("Starting message request");
-        ExternalMessage result = new ExternalMessage();
+        List<Message> result = new ArrayList<>();
 
         Set<String> scopes = authenticatedTokenScopes.getScopes();
 
         if (scopes.contains("PUBLIC_SERVICE")) {
-	    logger.info("Including public message");
-            result.setPublicText(messageService.getPhrase());
+	        logger.info("Including public message");
+            result.add(new Message(messageService.getPhrase(), "public"));
         }
 
         if (scopes.contains("PRIVATE_SERVICE")) {
-	    logger.info("Including private message");
-            InternalMessage privateMessage = privateServiceClient.getMessage();
-            result.setPrivateText(privateMessage.getText());
+	        logger.info("Including private message");
+            result.add(privateServiceClient.getMessage());
         }
 
         logger.info("Completed message request");

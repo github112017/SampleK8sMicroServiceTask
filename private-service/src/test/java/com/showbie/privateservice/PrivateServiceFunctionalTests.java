@@ -4,7 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.showbie.common.http.security.TokenGenerator;
-import com.showbie.common.models.InternalMessage;
+import com.showbie.common.models.Message;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,11 +58,14 @@ class PrivateServiceFunctionalTests {
     @Test
     void should_return_message_public_service_happy_path() {
 
-        InternalMessage message = makeRequestWithScopes("PRIVATE_SERVICE");
+        Message message = makeRequestWithScopes("PRIVATE_SERVICE");
 
         assertThat(message).isNotNull();
         assertThat(message.getText()).isNotNull();
-        System.out.println(message.getText());
+        assertThat(message.getOrigin()).isNotNull();
+        assertThat(message.getOrigin()).isEqualTo("private");
+        System.out.println(message);
+
     }
 
     @Test
@@ -169,7 +172,7 @@ class PrivateServiceFunctionalTests {
         assertClientError(exception, 401, "Unauthorized", "Authentication is required");
     }
 
-    private InternalMessage makeValidRequest(String resource) {
+    private Message makeValidRequest(String resource) {
         String token = TokenGenerator.createTokenHS256(
                 authTokenSigningKey,
                 5000,
@@ -178,7 +181,7 @@ class PrivateServiceFunctionalTests {
         return makeRequestInternal(resource, token);
     }
 
-    private InternalMessage makeRequestWithScopes(String... scope) {
+    private Message makeRequestWithScopes(String... scope) {
         String token = TokenGenerator.createTokenHS256(
                 authTokenSigningKey,
                 5000,
@@ -187,7 +190,7 @@ class PrivateServiceFunctionalTests {
         return makeRequest(token);
     }
 
-    private InternalMessage makeRequest(String token) {
+    private Message makeRequest(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
@@ -197,7 +200,7 @@ class PrivateServiceFunctionalTests {
         return makeRequestInternal(resource, headers);
     }
 
-    private InternalMessage makeRequestInternal(String resource, String token) {
+    private Message makeRequestInternal(String resource, String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
@@ -208,11 +211,11 @@ class PrivateServiceFunctionalTests {
         return makeRequestInternal(resource, headers);
     }
 
-    private InternalMessage makeRequestInternal(String resource, HttpHeaders headers) {
+    private Message makeRequestInternal(String resource, HttpHeaders headers) {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         String url = String.format("http://%s:%d/%s", host, port, resource);
-        ResponseEntity<InternalMessage> response = restTemplate.exchange(url, HttpMethod.GET, entity,
-                InternalMessage.class);
+        ResponseEntity<Message> response = restTemplate.exchange(url, HttpMethod.GET, entity,
+                Message.class);
         return response.getBody();
     }
 

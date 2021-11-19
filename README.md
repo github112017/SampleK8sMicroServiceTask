@@ -2,6 +2,9 @@
 
 [Original project documentation can be found here...](docs/Kubernetes_Cluster_Micro-service_Task.pdf)
 
+[Farren's project notes can be found here ...](README_FARREN.md)
+
+
 ## Overview
 
 The project currently provides a user with the ability to retrieve simple messages from a REST endpoint. It consists of a Java service deployed to a Kubernetes (K8s) environment.  The service is exposed from the K8s environment. 

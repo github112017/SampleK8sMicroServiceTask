@@ -4,6 +4,8 @@ import com.showbie.integration.models.Message;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
 import org.junit.jupiter.api.Test;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -27,6 +29,7 @@ import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
  */
 @SpringBootTest
 class ApplicationIntegrationTests {
+	Logger logger = LoggerFactory.getLogger(getClass());
 
 	@Value("${request.host}")
 	private String host;
@@ -45,7 +48,7 @@ class ApplicationIntegrationTests {
 	}
 
 	@Test
-	void showInfo() { // TODO: REMOVE AFTER TESTING
+	void _showInfo() { // TODO: REMOVE AFTER TESTING
 		System.out.println("http://" + host + "/" + resource);
 		System.out.println(authTokenSigningKey);
 	}
@@ -53,35 +56,41 @@ class ApplicationIntegrationTests {
 	@Test
 	void should_return_public_message_happy_path() {
 
-		Message message = makeRequestPublicOnly();
+		List<Message> messages = makeRequestPublicOnly();
 
-		assertThat(message).isNotNull();
-		assertThat(message.getPublicText()).isNotNull();
-		System.out.println("PUBLIC_MESSAGE: " + message.getPublicText());
-		assertThat(message.getPrivateText()).isNull();
+		assertThat(messages).isNotNull();
+		messages.forEach(m -> logger.info("--> {}", m));
+		assertThat(messages.size()).isEqualTo(1);
+		assertThat(messages.get(0).getOrigin()).isEqualTo("public");
+		assertThat(messages.get(0).getText()).isNotNull();
 	}
 
 	@Test
 	void should_return_private_message_happy_path() {
 
-		Message message = makeRequestPrivateOnly();
+		List<Message> messages = makeRequestPrivateOnly();
 
-		assertThat(message).isNotNull();
-		assertThat(message.getPublicText()).isNull();
-		assertThat(message.getPrivateText()).isNotNull();
-		System.out.println("PRIVATE_MESSAGE: " + message.getPrivateText());
+		assertThat(messages).isNotNull();
+		messages.forEach(m -> logger.info("--> {}", m));
+		assertThat(messages.size()).isEqualTo(1);
+		assertThat(messages.get(0).getOrigin()).isEqualTo("private");
+		assertThat(messages.get(0).getText()).isNotNull();
 	}
 
 	@Test
 	void should_return_public_and_private_messages_happy_path() {
 
-		Message message = makeRequestPublicAndPrivate();
+		List<Message> messages = makeRequestPublicAndPrivate();
 
-		assertThat(message).isNotNull();
-		assertThat(message.getPublicText()).isNotNull();
-		System.out.println("PUBLIC_MESSAGE:  " + message.getPublicText());
-		assertThat(message.getPrivateText()).isNotNull();
-		System.out.println("PRIVATE_MESSAGE: " + message.getPrivateText());
+		assertThat(messages).isNotNull();
+		messages.forEach(m -> logger.info("--> {}", m));
+		assertThat(messages.size()).isEqualTo(2);
+		assertThat(
+				messages.stream().anyMatch(m -> m.getOrigin().equals("public") && m.getText() != null)
+		).isTrue();
+		assertThat(
+				messages.stream().anyMatch(m -> m.getOrigin().equals("private") && m.getText() != null)
+		).isTrue();
 	}
 
 	@Test
@@ -97,6 +106,7 @@ class ApplicationIntegrationTests {
 		}
 
 		assertThat(exception).isNotNull();
+		logger.error("--> {}", exception.getMessage());
 		assertThat(exception.getStatusCode().value()).isEqualTo(404);
 	}
 
@@ -113,34 +123,37 @@ class ApplicationIntegrationTests {
 		}
 
 		assertThat(exception).isNotNull();
+		logger.error("--> {}", exception.getMessage());
 		assertThat(exception.getStatusCode().value()).isEqualTo(401);
 	}
 
-	private Message makeRequestPublicOnly() {
+	private List<Message> makeRequestPublicOnly() {
 		String token = generateToken("PUBLIC_SERVICE");
 		return makeRequestInternal(resource, token);
 	}
 
-	private Message makeRequestPrivateOnly() {
+	private List<Message> makeRequestPrivateOnly() {
 		String token = generateToken("PRIVATE_SERVICE");
 		return makeRequestInternal(resource, token);
 	}
 
-	private Message makeRequestPublicAndPrivate() {
+	private List<Message> makeRequestPublicAndPrivate() {
 		String token = generateToken("PUBLIC_SERVICE", "PRIVATE_SERVICE");
 		return makeRequestInternal(resource, token);
 	}
 
-	private Message makeRequestInternal(String resource, String token) {
+	private List<Message> makeRequestInternal(String resource, String token) {
+		String correlationId = UUID.randomUUID().toString();
 		HttpHeaders headers = new HttpHeaders();
 		headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
-		headers.set("X-CorrelationId", UUID.randomUUID().toString());
+		headers.set("X-CorrelationId", correlationId);
 		headers.setBearerAuth(token);
 		HttpEntity<String> entity = new HttpEntity<>(headers);
 		String url = String.format("http://%s/%s", host, resource);
-		ResponseEntity<Message> response = restTemplate.exchange(url, HttpMethod.GET, entity,
-			Message.class);
-		return response.getBody();
+		logger.info("Requesting {} with correlationId={}", url, correlationId);
+		ResponseEntity<Message[]> response = restTemplate.exchange(url, HttpMethod.GET, entity,
+			Message[].class);
+		return Arrays.asList(Objects.requireNonNull(response.getBody()));
 	}
 
 	private String generateToken(String... scope) {

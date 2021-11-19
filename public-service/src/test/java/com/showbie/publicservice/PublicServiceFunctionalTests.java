@@ -4,8 +4,7 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.showbie.common.http.security.TokenGenerator;
-import com.showbie.common.models.ExternalMessage;
-import com.showbie.common.models.InternalMessage;
+import com.showbie.common.models.Message;
 import com.showbie.publicservice.services.PrivateServiceClient;
 import org.junit.jupiter.api.Test;
 import org.junit.runner.RunWith;
@@ -21,10 +20,7 @@ import org.springframework.test.context.junit4.SpringRunner;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
 
-import java.util.Collections;
-import java.util.Date;
-import java.util.Map;
-import java.util.UUID;
+import java.util.*;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
@@ -84,43 +80,47 @@ public class PublicServiceFunctionalTests {
     @Test
     void should_return_message_public_service_happy_path() {
 
-        ExternalMessage message = makeRequestWithScopes("PUBLIC_SERVICE");
+        List<Message> messages = makeRequestWithScopes("PUBLIC_SERVICE");
 
-        assertThat(message).isNotNull();
-        assertThat(message.getPublicText()).isNotNull();
-        assertThat(message.getPrivateText()).isNull();
-        System.out.println(message.getPublicText());
+        assertThat(messages).isNotNull();
+        System.out.println(messages);
+        assertThat(messages.size()).isEqualTo(1);
+        assertThat(messages.get(0).getOrigin()).isEqualTo("public");
+        assertThat(messages.get(0).getText()).isNotNull();
     }
 
     @Test
     void should_return_message_private_service_happy_path() {
         String privateMessage = "Hello World!";
-        doReturn(new InternalMessage(privateMessage))
+        doReturn(new Message(privateMessage, "mock"))
                 .when(privateServiceClientMock).getMessage();
 
-        ExternalMessage message = makeRequestWithScopes("PRIVATE_SERVICE");
+        List<Message> messages = makeRequestWithScopes("PRIVATE_SERVICE");
 
-        assertThat(message).isNotNull();
-        assertThat(message.getPublicText()).isNull();
-        assertThat(message.getPrivateText()).isNotNull();
-        System.out.println(message.getPrivateText());
-        assertThat(message.getPrivateText()).isEqualTo(privateMessage);
+        assertThat(messages).isNotNull();
+        System.out.println(messages);
+        assertThat(messages.size()).isEqualTo(1);
+        assertThat(messages.get(0).getOrigin()).isEqualTo("mock");
+        assertThat(messages.get(0).getText()).isEqualTo(privateMessage);
     }
 
     @Test
     void should_return_messages_public_and_internal_service_happy_path() {
         String privateMessage = "Hello World!";
-        doReturn(new InternalMessage(privateMessage))
+        doReturn(new Message(privateMessage, "mock"))
                 .when(privateServiceClientMock).getMessage();
 
-        ExternalMessage message = makeRequestWithScopes("PUBLIC_SERVICE", "PRIVATE_SERVICE");
+        List<Message> messages = makeRequestWithScopes("PUBLIC_SERVICE", "PRIVATE_SERVICE");
 
-        assertThat(message).isNotNull();
-        assertThat(message.getPublicText()).isNotNull();
-        System.out.println(message.getPublicText());
-        assertThat(message.getPrivateText()).isNotNull();
-        System.out.println(message.getPrivateText());
-        assertThat(message.getPrivateText()).isEqualTo(privateMessage);
+        assertThat(messages).isNotNull();
+        System.out.println(messages);
+        assertThat(messages.size()).isEqualTo(2);
+        assertThat(
+                messages.stream().anyMatch(m -> m.getOrigin().equals("public") && m.getText() != null)
+        ).isTrue();
+        assertThat(
+                messages.stream().anyMatch(m -> m.getOrigin().equals("mock") && m.getText().equals(privateMessage))
+        ).isTrue();
     }
 
     @Test
@@ -265,7 +265,7 @@ public class PublicServiceFunctionalTests {
         assertClientError(exception, 401, "Unauthorized", "Authentication is required");
     }
 
-    private ExternalMessage makeValidRequest(String resource) {
+    private List<Message> makeValidRequest(String resource) {
         String token = TokenGenerator.createTokenHS256(
                 authTokenSigningKey,
                 5000,
@@ -274,7 +274,7 @@ public class PublicServiceFunctionalTests {
         return makeRequestInternal(resource, token);
     }
 
-    private ExternalMessage makeRequestWithScopes(String... scope) {
+    private List<Message> makeRequestWithScopes(String... scope) {
         String token = TokenGenerator.createTokenHS256(
                 authTokenSigningKey,
                 5000,
@@ -283,7 +283,7 @@ public class PublicServiceFunctionalTests {
         return makeRequest(token);
     }
 
-    private ExternalMessage makeRequest(String token) {
+    private List<Message> makeRequest(String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
@@ -293,7 +293,7 @@ public class PublicServiceFunctionalTests {
         return makeRequestInternal(resource, headers);
     }
 
-    private ExternalMessage makeRequestInternal(String resource, String token) {
+    private List<Message> makeRequestInternal(String resource, String token) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.APPLICATION_JSON));
         headers.set("X-CorrelationId", UUID.randomUUID().toString());
@@ -304,12 +304,11 @@ public class PublicServiceFunctionalTests {
         return makeRequestInternal(resource, headers);
     }
 
-    private ExternalMessage makeRequestInternal(String resource, HttpHeaders headers) {
+    private List<Message> makeRequestInternal(String resource, HttpHeaders headers) {
         HttpEntity<String> entity = new HttpEntity<>(headers);
         String url = String.format("http://%s:%d/%s", host, port, resource);
-        ResponseEntity<ExternalMessage> response = restTemplate.exchange(url, HttpMethod.GET, entity,
-                ExternalMessage.class);
-        return response.getBody();
+        ResponseEntity<Message[]> response = restTemplate.exchange(url, HttpMethod.GET, entity, Message[].class);
+        return Arrays.asList(Objects.requireNonNull(response.getBody()));
     }
 
     private void assertClientError(HttpClientErrorException ex, int expectedStatus, String expectedErrorSubstring, String expectedMessageSubstring) throws JsonProcessingException {

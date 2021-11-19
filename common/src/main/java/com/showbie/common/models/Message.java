@@ -1,4 +1,4 @@
-package com.showbie.integration.models;
+package com.showbie.common.models;
 
 /**
  * Model class for serializing messages, includes both a text and the origin.

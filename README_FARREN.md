@@ -3,12 +3,20 @@
 I needed to make some significant changes to the code base to complete
 this task:
 
+### Build Changes
+
 1. Reconfigure projects to use gradle multi-projects. This removes the
    need for gradle wrapper in each project and allows easier
    configuration of project dependencies.  Also, the original
    configuration confused IntelliJ causing various hangs.
 
-2. The project doesn't spell out how to ensure that the
+2. All common code has been abstracted to a library, especially
+   security-related classes; this ensures common behavior across all,
+   and new, services.
+
+### Code Changes
+
+1. The project doesn't spell out how to ensure that the
    private-service can only accept requests from the
    public-service. There are multiple ways to ensure this, but I
    have taken a simple approach that reuses the existing token code. In
@@ -32,22 +40,18 @@ this task:
       calls directly to private-service even if private-service was
       exposed publicly.
 
-3. The `Message` POJO class was renamed to `ExternalMessage` and modified
-   to contain two strings, the publicText and the privateText. The
-   `InternalMessage` POJO returned by the private-service is the same as
-   the original `Message`.
+2. The `Message` POJO class was extended to include an `origin` attribute
+   denoting the origin of the message, either "public" or "private" here.
+   The private-service responds with a single `Message` and the public-service
+   responds with a list of `Message`s.
 
-4. Updated `RequestErrorController` to return a consistent response when
+3. Updated `RequestErrorController` to return a consistent response when
    encountering unauthorized requests. It was returning a 401 status with
    a JSON body containing a 501 status and an internal service error
    message. The HTTP status code in the response and in the JSON body
    (and error message) are now consistent.
 
-5. All common code has been abstracted to a library, especially
-   security-related classes; this ensures common behavior across all, and
-   new, services.
-
-6. Multiple levels of testing is provided (there is some overlap):
+4. Multiple levels of testing is provided (there is some overlap):
 
    1. Unit tests for classes providing non-trivial business
       logic.  These are intended to focus on algorithmic correctness,
@@ -62,6 +66,13 @@ this task:
    3. Integration tests for verifying functionality in an
       _as close to production as possible_ environment. These are used to
       prove out the service configuration and plumbing between services.
+
+### Deployment Changes
+
+1. Changed the Docker images ...
+2. XXXXXXX
+3. XXXXXXX  Fisnish this discussion
+4. XXXXXXX
 
 # Comments
 
