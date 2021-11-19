@@ -73,12 +73,35 @@ this task:
       _as close to production as possible_ environment. These are used to
       prove out the service configuration and plumbing between services.
 
-### Deployment Changes
+### Deployment Procedure
 
-1. Changed the Docker images ...
-2. XXXXXXX
-3. XXXXXXX  Fisnish this discussion
-4. XXXXXXX
+My environment is running MacOS 12.0.1 running:
+- Docker Desktop v4.2.0
+- minukube 1.24.0 with the following addons:
+  - dashboard
+  - ingress
+- kubernetes-cli 1.22.3
+
+1. Build the docker images via `./gradlew clean docker`, this will ensure a clean build and also run any unit and functional tests.
+2. Manually push the docker images to DockerHub (can use DockerDesktop), currently using my `farrenlayton` repositories; these can be changed by editting the image names in
+   - public-service/build.gradle
+   - private-service/build.gradle
+   - deployment.yaml
+3. Deploy the images via `kubectl apply -f deployment.yaml`, this creates the pods and services in the usual `showbie` namespace. At this point, the pods should run but neither are accessible from outside the cluster.
+4. There are multiple ways to expose the public-service publicly:
+   1. Expose the public service via `minikube service publicservice-v1 --namespace=showbie`. This creates gives a tunnel from a random local port to your exposed service.
+   2. Expose the public-service via minikube's builtin loadbalancer via `kubectl expose deployment publicservice-v1-deployment --type=LoadBalancer --port=8081 --namespace=showbie`. This also requires running `minikube tunnel` to create a tunnels for the exposed services.
+   3. Create a 3rd-party ingress. I won't go into details here because of minikubes support mentioned above, but this would be the prefered route when working with a production cluster hosting many microservices as gives more control and features.
+5. Run the integration tests via `spring_profiles_active=prod request_host=127.0.0.1:8081 ./gradlew tests:integration:integration` substituting the appropriate port number based on the way the service was exposed above.
+
+### Testing
+
+When the services are deployed to minikube (or both are running locally), the integration tests can be run via
+```shell
+ spring_profiles_active=prod request_host=127.0.0.1:8081 ./gradlew tests:integration:integration
+```
+The `spring_profiles_active=prod` tells the integraiton tests to use the `application-prod.properties` file including the required token key used by the public-service in it's prod profile.
+
 
 # Comments
 
