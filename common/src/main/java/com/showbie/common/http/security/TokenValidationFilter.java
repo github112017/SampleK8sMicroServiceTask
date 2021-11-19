@@ -88,6 +88,7 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
             // if token is valid then set security context
             if (tokenParser.isValid()) {
+                // TODO - this could be aabstracted to a mehtod with a unit test to verify it and createAuthenticationPrinciple()
                 logger.debug("Request authenticated via JWT with scopes {}", tokenParser.getScopes());
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 context.setAuthentication(createAuthenticationPrinciple(tokenParser.getScopes()));
