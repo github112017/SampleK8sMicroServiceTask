@@ -51,7 +51,13 @@ this task:
    message. The HTTP status code in the response and in the JSON body
    (and error message) are now consistent.
 
-4. Multiple levels of testing is provided (there is some overlap):
+4. I added more logging than needed for observability into the services
+   behavior, including correlation ids (for tracking a single request
+   through multiple services) and authentication failure reasons. These
+   would normally be downgraded to debug or trace levels (or removed 
+   completely) but are handy for debugging during development and testing. 
+
+5. Multiple levels of testing is provided (there is some overlap):
 
    1. Unit tests for classes providing non-trivial business
       logic.  These are intended to focus on algorithmic correctness,
