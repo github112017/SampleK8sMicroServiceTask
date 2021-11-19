@@ -6,7 +6,7 @@
 # flexibility to make changes on the cloud side. Also useful for support of multiple 
 # versions of a service running concurrently 
 #
-apiVersion: networking.k8s.io/v1beta1
+apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   namespace: showbie
@@ -18,6 +18,9 @@ spec:
   - http:
       paths:
       - path: /publicservice/v1/(.*)
+        pathType: Exact
         backend:
-          serviceName: publicservice-v1
-          servicePort: 8081
+          service:
+            name: publicservice-v1
+            port:
+              number: 8081
