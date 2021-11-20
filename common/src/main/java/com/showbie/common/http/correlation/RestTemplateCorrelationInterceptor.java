@@ -29,7 +29,7 @@ public class RestTemplateCorrelationInterceptor implements ClientHttpRequestInte
         throws IOException {
 
         // DOC - if available, the correlation is stored in the logging subsystem's MDC
-        String correlationId = MDC.get(CORRELATION_MDC_KEY); // TODO: could be abstracted with its own test
+        String correlationId = MDC.get(CORRELATION_MDC_KEY); // TODO: getting the correlation id could be abstracted to its own method with its own tests
         if (correlationId != null) {
             request.getHeaders().add(CORRELATION_ID_HEADER, MDC.get(CORRELATION_MDC_KEY));
         }

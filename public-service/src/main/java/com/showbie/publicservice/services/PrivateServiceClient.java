@@ -35,7 +35,8 @@ public class PrivateServiceClient {
 
     @PostConstruct
     public void showInfo() {
-        logger.error("{} using {}", hostUri, tokenSigningKey); // TODO: REMOVE AFTER TESTING
+        // TODO - This is provided for debugging purposes only and should be removed before production
+        logger.info("DIAGNOSTIC: will call {} using key={}", hostUri, tokenSigningKey);
     }
 
     public Message getMessage() {

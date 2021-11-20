@@ -48,7 +48,8 @@ class ApplicationIntegrationTests {
 	}
 
 	@Test
-	void _showInfo() { // TODO: REMOVE AFTER TESTING
+	void _showInfo() {
+		// TODO - provided for debugging purposes
 		System.out.println("http://" + host + "/" + resource);
 		System.out.println(authTokenSigningKey);
 	}

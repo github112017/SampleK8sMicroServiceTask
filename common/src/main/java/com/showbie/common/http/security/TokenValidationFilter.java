@@ -51,7 +51,8 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
     @PostConstruct
     public void showInfo() {
-        logger.error("Using token key={} with supportedScopes={}", tokenVerificationKey, supportedScopes); // TODO: REMOVE AFTER TESTING
+        // TODO - This is provided for debugging purposes only and should be removed before production
+        logger.info("DIAGNOSTIC: Accepting key={} with supportedScopes={}", tokenVerificationKey, supportedScopes);
     }
 
     /**
@@ -88,7 +89,7 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
             // if token is valid then set security context
             if (tokenParser.isValid()) {
-                // TODO - this could be aabstracted to a mehtod with a unit test to verify it and createAuthenticationPrinciple()
+                // TODO - this could be abstracted to a method with a unit test to verify it and createAuthenticationPrinciple()
                 logger.debug("Request authenticated via JWT with scopes {}", tokenParser.getScopes());
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 context.setAuthentication(createAuthenticationPrinciple(tokenParser.getScopes()));
