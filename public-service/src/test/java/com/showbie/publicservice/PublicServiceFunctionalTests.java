@@ -24,8 +24,7 @@ import java.util.*;
 
 import static org.assertj.core.api.AssertionsForClassTypes.assertThat;
 import static org.junit.jupiter.api.Assertions.fail;
-import static org.mockito.Mockito.doReturn;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 
 /**
  * Functional tests used to validate public-service behavior.
@@ -42,7 +41,7 @@ public class PublicServiceFunctionalTests {
         @Primary
         @Bean
         public PrivateServiceClient privateServiceClient() {
-            return mock(PrivateServiceClient.class);
+            return spy(PrivateServiceClient.class);
         }
     }
 

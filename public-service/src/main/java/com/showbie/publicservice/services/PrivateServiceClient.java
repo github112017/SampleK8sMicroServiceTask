@@ -35,8 +35,13 @@ public class PrivateServiceClient {
 
     @PostConstruct
     public void showInfo() {
-        // TODO - This is provided for debugging purposes only and should be removed before production
-        logger.info("DIAGNOSTIC: will call {} using key={}", hostUri, tokenSigningKey);
+        // log the (obfuscated) token key and supportedScopes for diagnosing configuration issues
+        int minLength = 6;
+        String obfuscatedKey = tokenSigningKey;
+        if (tokenSigningKey.length() > minLength) { // all secure keys should be of longer length
+            obfuscatedKey = tokenSigningKey.substring(0, minLength) + "...";
+        }
+        logger.info("DIAGNOSTIC: will call {} using key={}", hostUri, obfuscatedKey);
     }
 
     public Message getMessage() {

@@ -51,8 +51,13 @@ public class TokenValidationFilter extends OncePerRequestFilter {
 
     @PostConstruct
     public void showInfo() {
-        // TODO - This is provided for debugging purposes only and should be removed before production
-        logger.info("DIAGNOSTIC: Accepting key={} with supportedScopes={}", tokenVerificationKey, supportedScopes);
+        // log the (obfuscated) token key and supportedScopes for diagnosing configuration issues
+        int minLength = 6;
+        String obfuscatedKey = tokenVerificationKey;
+        if (tokenVerificationKey.length() > minLength) { // all secure keys should be of longer length
+            obfuscatedKey = tokenVerificationKey.substring(0, minLength) + "...";
+        }
+        logger.info("DIAGNOSTIC: Accepting key={} with supportedScopes={}", obfuscatedKey, supportedScopes);
     }
 
     /**
